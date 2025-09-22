@@ -9,17 +9,25 @@ import { RoomModule } from './modules/room/room.module';
 import { SubjectModule } from './modules/subject/subject.module';
 import { ClassModule } from './modules/class/class.module';
 
-
 @Module({
-imports: [
-TypeOrmModule.forRoot(),
-DepartmentModule,
-ProfessorModule,
-BuildingModule,
-RoomModule,
-SubjectModule,
-ClassModule,
-ReportsModule,
-],
+  imports: [
+    TypeOrmModule.forRoot({
+      type: 'postgres',
+      host: process.env.DB_HOST || 'db',
+      port: Number(process.env.DB_PORT) || 5432,
+      username: process.env.DB_USERNAME || 'chavito',
+      password: process.env.DB_PASSWORD || 'chavito',
+      database: process.env.DB_DATABASE || 'chavito',
+      autoLoadEntities: true,
+      synchronize: false,
+    }),
+    DepartmentModule,
+    ProfessorModule,
+    BuildingModule,
+    RoomModule,
+    SubjectModule,
+    ClassModule,
+    ReportsModule,
+  ],
 })
 export class AppModule {}

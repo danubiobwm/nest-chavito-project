@@ -1,34 +1,35 @@
 services:
   db:
     image: postgres:15
-    restart: always
+    container_name: nest-chavito-project-db
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-chavito}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-chavito}
-      POSTGRES_DB: ${POSTGRES_DB:-chavito}
+      POSTGRES_USER: chavito
+      POSTGRES_PASSWORD: chavito
+      POSTGRES_DB: chavito
+    ports:
+      - "5432:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
-      - ./src/seeds:/docker-entrypoint-initdb.d:ro
-    ports:
-      - '5432:5432'
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   app:
     build: .
-    command: sh -c "sleep 5 && npm run migration:run && npm run start:dev"
+    container_name: nest-chavito-project-app
+    command: sh -c "npm run migration:run && npm run start:dev"
     volumes:
-      - ./:/usr/src/app
+      - .:/usr/src/app
       - /usr/src/app/node_modules
     ports:
-      - '3000:3000'
-    environment:
-      - NODE_ENV=development
-      - DB_HOST=db
-      - DB_PORT=5432
-      - DB_USERNAME=${POSTGRES_USER:-chavito}
-      - DB_PASSWORD=${POSTGRES_PASSWORD:-chavito}
-      - DB_DATABASE=${POSTGRES_DB:-chavito}
+      - "3000:3000"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
 
 volumes:
   db_data:

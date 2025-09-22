@@ -1,5 +1,3 @@
--- cria tabelas via migrations (se não usar migrations, ativar synchronize=true temporariamente)
-
 
 -- departamentos
 INSERT INTO "department" (name) VALUES ('Humanidades'), ('Matemática'), ('Física');
