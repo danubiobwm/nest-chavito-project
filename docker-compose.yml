@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-chavito}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-chavito}
+      POSTGRES_DB: ${POSTGRES_DB:-chavito}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./src/seeds:/docker-entrypoint-initdb.d:ro
+    ports:
+      - '5432:5432'
+
+  app:
+    build: .
+    command: sh -c "npm run typeorm:migrate && npm run start:dev"
+    volumes:
+      - ./:/usr/src/app
+      - /usr/src/app/node_modules
+    ports:
+      - '3000:3000'
+    environment:
+      - NODE_ENV=development
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USERNAME=${POSTGRES_USER:-chavito}
+      - DB_PASSWORD=${POSTGRES_PASSWORD:-chavito}
+      - DB_DATABASE=${POSTGRES_DB:-chavito}
+    depends_on:
+      - db
+
+volumes:
+  db_data:
