@@ -1,98 +1,191 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+## Nest Chavito
+### Instruções para subir com Docker, inserir dados e testar
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Resumo rápido:
+ este projeto usa Docker (Postgres + app Nest). O docker-compose.yml define dois serviços: db (Postgres) e app (aplicação Nest). A API fica em http://localhost:3000 e o banco em localhost:5432 (usuário/senha: chavito/chavito).
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+  para o Swagger:
 
-## Description
+  http://localhost:3000/api#/
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+ ## Pré-requisitos
 
-## Project setup
+Docker (e Docker Compose integrado) instalado.
 
-```bash
-$ npm install
+(Opcional) psql local para checar o banco, curl ou Postman para testar endpoints.
+
+* 1 - Preparar o ambiente
+
+No diretório raiz do projeto (onde está o docker-compose.yml):
+
+Verifique se existe .env. Se não houver, crie a partir do exemplo:
+```
+cp .env.example .env
+```
+O .env padrão contém (valores usados pelo compose):
+```
+DB_TYPE=postgres
+POSTGRES_USER=chavito
+POSTGRES_PASSWORD=chavito
+POSTGRES_DB=chavito
+DB_HOST=db
+DB_PORT=5432
+DB_USERNAME=chavito
+DB_PASSWORD=chavito
+DB_DATABASE=chavito
+```
+OBS: Ajuste se necessário (por exemplo portas).
+
+* 2 - Subir containers (Docker Compose)
+
+No terminal, a partir da raiz do projeto:
+```
+# Com Docker Compose v2 (recomendado)
+docker compose up --build -d
+
+# Ou com docker-compose (versões antigas)
+docker-compose up --build -d
+
+```
+Verifique status:
+```
+docker compose ps
 ```
 
-## Compile and run the project
+Acompanhe logs da aplicação (aguarde até ver que a aplicação iniciou ou até as migrations rodarem):
 
-```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+```
+docker compose logs -f app
 ```
 
-## Run tests
+* 3 - Rodar migrations (se necessário)
 
-```bash
-# unit tests
-$ npm run test
+O docker-compose já executa npm run migration:run na inicialização do app (conforme docker-compose.yml). Se quiser rodar manualmente depois que o container estiver UP:
+```
+docker compose exec app npm run migration:run
 
-# e2e tests
-$ npm run test:e2e
+```
+* 4 - Inserir dados no banco (seed)
+Há duas formas, sendo a recomendada a de usar o script de seed ts-node já presente no projeto.
 
-# test coverage
-$ npm run test:cov
+Recomendado (rodar script TypeScript de seed dentro do container app):
+```
+docker compose exec app npm run seed
 ```
 
-## Deployment
+Esse script (src/seeds/seeds.ts) conecta via TypeORM ao banco e insere registros iniciais (departamentos, títulos, professores, etc). Ao final ele imprime Seed executado com sucesso! quando bem sucedido.
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+Alternativa (usar o arquivo SQL):
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+O projeto também contém src/seeds/seed.sql. Para aplicar esse SQL diretamente no container do banco você pode (exemplo usando cat e canalizando para o psql do container db):
 
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+```
+# Exemplo: envia o SQL do container 'app' para o psql do container 'db'
+docker compose exec -T app cat src/seeds/seed.sql | docker compose exec -T db psql -U chavito -d chavito
+
+````
+Obs: a forma acima assume que os arquivos do projeto estão montados em /usr/src/app dentro do container app — isto é verdade no docker-compose.yml do projeto.
+
+* 5 - Como verificar os dados diretamente no banco
+
+Se tiver psql instalado localmente:
+```
+# Linux/Mac
+PGPASSWORD=chavito psql -h localhost -p 5432 -U chavito -d chavito -c "SELECT id, name FROM department;"
+
+# No Windows PowerShell
+$env:PGPASSWORD="chavito"; psql -h localhost -p 5432 -U chavito -d chavito -c "SELECT id, name FROM department;"
+```
+Ou usando psql dentro do container do banco:
+
+```
+docker compose exec db psql -U chavito -d chavito -c "SELECT id, name FROM department;"
+
+```
+* 6 - Testar a API
+
+A aplicação expõe endpoints REST para testar recursos (exemplos abaixo usam curl):
+
+Teste se a aplicação está no ar (root):
+```
+curl -i http://localhost:3000/
+# Deve retornar "Hello World!" no body
+
+```
+Listar todos os  buildings:
+```
+curl http://localhost:3000/buildings
+````
+Criar um building (exemplo):
+```
+curl -X POST http://localhost:3000/buildings \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Bloco A"}'
+
+```
+Listar subjects:
+```
+curl http://localhost:3000/subjects
+```
+Criar um subject (exemplo — conforme DTO do projeto):
+```
+curl -X POST http://localhost:3000/subjects \
+  -H "Content-Type: application/json" \
+  -d '{"subject_id":"MAT101","code":"MAT101","name":"Matemática I"}'
+
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+Relatórios disponíveis (exemplos):
 
-## Resources
+Horas por professor:
+```
+curl http://localhost:3000/reports/hours-per-professor
 
-Check out a few resources that may come in handy when working with NestJS:
+```
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+Agenda das salas:
+```
+curl http://localhost:3000/reports/rooms-schedule
 
-## Support
+```
+Observação: além dos endpoints acima, o projeto possui controllers REST para rooms, class, professors, departments, titles etc. Use GET /<resource> e POST /<resource> conforme DTOs em src/modules/*/dto.
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+* 7 - Rodar testes automatizados
+```
+docker compose exec app npm test
 
-## Stay in touch
+```
+Se preferir rodar localmente, instale dependências (npm install) e execute npm test localmente (assegure que o .env aponte para um banco disponível).
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+* 8 - Parar e remover containers / volumes
 
-## License
+```
+# Para e remove containers (e redes)
+docker compose down
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+# Para e remove containers + volumes (remove volume do Postgres => perde dados)
+docker compose down -v
+
+```
+## Resumo rápido de comandos
+```
+# 1. Subir containers
+docker compose up --build -d
+
+# 2. Ver logs da app
+docker compose logs -f app
+
+# 3. Rodar seed (inserir dados)
+docker compose exec app npm run seed
+
+# 4. Testar API (exemplos)
+curl http://localhost:3000/
+curl http://localhost:3000/buildings
+curl -X POST http://localhost:3000/buildings -H "Content-Type: application/json" -d '{"name":"Bloco A"}'
+
+# 5. Rodar testes
+docker compose exec app npm test
+
+# 6. Parar e remover (opcional)
+docker compose down -v
+```
