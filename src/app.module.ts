@@ -19,7 +19,7 @@ import { ClassModule } from './modules/class/class.module';
       password: process.env.DB_PASSWORD || 'chavito',
       database: process.env.DB_DATABASE || 'chavito',
       autoLoadEntities: true,
-      synchronize: false,
+      synchronize: true,
     }),
     DepartmentModule,
     ProfessorModule,
